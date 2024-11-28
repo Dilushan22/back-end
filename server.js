@@ -19,13 +19,13 @@ app.use((req, res, next) => {
 });
 
 // MongoDB Connection URI
-const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:3000'; // Fallback to local MongoDB if no URI in environment
+const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017'; // Fallback to local MongoDB
 let db;
 
 // Connect to MongoDB
-MongoClient.connect(mongoUri)
+MongoClient.connect(mongoUri, { useUnifiedTopology: true })
     .then(client => {
-        db = client.db('webstore'); // Connect to the 'Lessons' database
+        db = client.db('webstore'); // Connect to the 'Webstore' database
         console.log('Connected to MongoDB');
 
         // Start the server once MongoDB is connected
@@ -39,65 +39,65 @@ MongoClient.connect(mongoUri)
 
 // Home Route
 app.get('/', (req, res) => {
-    res.send('Welcome to the Lessons API! Try /lessons or /orders');
+    res.send('Welcome to the webstore API! Try /products or /orders');
 });
 
-// Lessons API
-app.get('/lessons', async (req, res) => {
+// Products API
+app.get('/products', async (req, res) => {
     try {
-        const lessons = await db.collection('lessons').find({}).toArray();
-        res.json(lessons); // Send lessons as JSON
+        const products = await db.collection('Products').find({}).toArray();
+        res.json(products); // Send products as JSON
     } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch lessons' });
+        res.status(500).json({ error: 'Failed to fetch products' });
     }
 });
 
-app.post('/lessons', async (req, res) => {
+app.post('/products', async (req, res) => {
     try {
-        const result = await db.collection('lessons').insertOne(req.body);
-        res.status(201).json(result.ops[0]); // Send the created lesson
+        const result = await db.collection('Products').insertOne(req.body);
+        res.status(201).json(result.ops[0]); // Send the created product
     } catch (error) {
-        res.status(500).json({ error: 'Failed to create lesson' });
+        res.status(500).json({ error: 'Failed to create product' });
     }
 });
 
-app.put('/lessons/:id', async (req, res) => {
-    const lessonId = req.params.id;
+app.put('/products/:id', async (req, res) => {
+    const productId = req.params.id;
 
-    if (!ObjectId.isValid(lessonId)) {
-        return res.status(400).json({ error: 'Invalid lesson ID' });
+    if (!ObjectId.isValid(productId)) {
+        return res.status(400).json({ error: 'Invalid product ID' });
     }
 
     try {
-        const result = await db.collection('lessons').updateOne(
-            { _id: new ObjectId(lessonId) },
+        const result = await db.collection('Products').updateOne(
+            { _id: new ObjectId(productId) },
             { $set: req.body }
         );
-        res.json(result.matchedCount === 1 ? { msg: 'Success' } : { msg: 'Lesson not found' });
+        res.json(result.matchedCount === 1 ? { msg: 'Success' } : { msg: 'Product not found' });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to update lesson' });
+        res.status(500).json({ error: 'Failed to update product' });
     }
 });
 
-app.delete('/lessons/:id', async (req, res) => {
-    const lessonId = req.params.id;
+app.delete('/products/:id', async (req, res) => {
+    const productId = req.params.id;
 
-    if (!ObjectId.isValid(lessonId)) {
-        return res.status(400).json({ error: 'Invalid lesson ID' });
+    if (!ObjectId.isValid(productId)) {
+        return res.status(400).json({ error: 'Invalid product ID' });
     }
 
     try {
-        const result = await db.collection('lessons').deleteOne({ _id: new ObjectId(lessonId) });
-        res.json(result.deletedCount === 1 ? { msg: ' Success' } : { msg: 'Lesson not found' });
+        const result = await db.collection('Products').deleteOne({ _id: new ObjectId(productId) });
+        res.json(result.deletedCount === 1 ? { msg: 'Success' } : { msg: 'Product not found' });
     } catch (error) {
-        res.status(500).json({ error: 'Failed to delete lesson' });
+        res.status(500).json({ error: 'Failed to delete product' });
     }
 });
 
 // Orders API
 app.get('/orders', async (req, res) => {
     try {
-        const orders = await db.collection('orders').find({}).toArray();
+        const orders = await db.collection('Orders').find({}).toArray();
         res.json(orders); // Send orders as JSON
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch orders' });
@@ -106,7 +106,7 @@ app.get('/orders', async (req, res) => {
 
 app.post('/orders', async (req, res) => {
     try {
-        const result = await db.collection('orders').insertOne(req.body);
+        const result = await db.collection('Orders').insertOne(req.body);
         res.status(201).json(result.ops[0]); // Send the created order
     } catch (error) {
         res.status(500).json({ error: 'Failed to create order' });
@@ -121,7 +121,7 @@ app.put('/orders/:id', async (req, res) => {
     }
 
     try {
-        const result = await db.collection('orders').updateOne(
+        const result = await db.collection('Orders').updateOne(
             { _id: new ObjectId(orderId) },
             { $set: req.body }
         );
@@ -139,7 +139,7 @@ app.delete('/orders/:id', async (req, res) => {
     }
 
     try {
-        const result = await db.collection('orders').deleteOne({ _id: new ObjectId(orderId) });
+        const result = await db.collection('Orders').deleteOne({ _id: new ObjectId(orderId) });
         res.json(result.deletedCount === 1 ? { msg: 'Success' } : { msg: 'Order not found' });
     } catch (error) {
         res.status(500).json({ error: 'Failed to delete order' });

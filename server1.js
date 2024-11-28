@@ -19,7 +19,7 @@ const MongoClient = require('mongodb').MongoClient;
 
 let db;
 MongoClient.connect('mongodb+srv://diluboii:Prince%402025@cluster0.kmsmh.mongodb.net/', (err, client) => {
-    db = client.db('Webstore')
+    db = client.db('webstore')
 })
 
 

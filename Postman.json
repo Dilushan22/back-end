@@ -1,0 +1,28 @@
+[
+    {
+        "_id": "67334b065c947ccd06301d82",
+        "name": "catfood",
+        "price": 60
+    },
+    {
+        "_id": "67334b3d5c947ccd06301d84",
+        "name": "kitty Nap",
+        "price": 100
+    },
+    {
+        "_id": "67334c0e5c947ccd06301d88",
+        "name": "budara",
+        "price": 100,
+        "number": "0561736585",
+        "description": "lunatic idiotic gurl ever...!"
+    },
+    {
+        "_id": "673c7c34941a6e557c6511f2",
+        "title": "new product",
+        "price": 49
+    },
+    {
+        "_id": "673c8474408048006c77bd1f",
+        "name": "chucuc"
+    }
+]

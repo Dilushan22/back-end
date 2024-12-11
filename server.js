@@ -1,155 +1,132 @@
-const express = require('express');
-const { MongoClient, ObjectId } = require('mongodb'); // Import MongoClient and ObjectId
-require('dotenv').config();
+// Import dependencies modules:
+const express = require('express')
+// const bodyParser = require('body-parser')
 
-const app = express(); // Initialize Express app
-const PORT = process.env.PORT || 3000; // Define backend port
-app.use(express.json()); // Middleware to parse incoming JSON requests
+var path = require("path");
 
-// Enable CORS (Cross-Origin Resource Sharing)
-app.use((req, res, next) => {
+
+// Create an Express.js instance:
+const app = express()
+// config Express.js
+app.use(express.json())
+app.set('port', 3000)
+app.use ((req,res,next) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,OPTIONS,POST,PUT,DELETE');
-    res.setHeader(
-        'Access-Control-Allow-Headers',
-        'Origin, Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers'
-    );
-    next();
-});
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Allow-Methods", "GET,HEAD,OPTIONS,POST,PUT");
+    res.setHeader("Access-Control-Allow-Headers", "Access-Control-Allow-Headers, Origin,Accept, X-Requested-With, Content-Type, Access-Control-Request-Method, Access-Control-Request-Headers");
 
-// MongoDB Connection URI
-const mongoUri = process.env.MONGODB_URI || 'mongodb://localhost:27017'; // Fallback to local MongoDB
+    next();
+})
+
+// connect to MongoDB
+const MongoClient = require('mongodb').MongoClient;
+
 let db;
 
-// Connect to MongoDB
-MongoClient.connect(mongoUri, { useUnifiedTopology: true })
-    .then(client => {
-        db = client.db('webstore'); // Connect to the 'Webstore' database
-        console.log('Connected to MongoDB');
+// MongoClient.connect('mongodb+srv://diluboii:Prince%402025@cluster0.kmsmh.mongodb.net/', (err, client) => {
+//     db = client.db('webstore')
+// })
 
-        // Start the server once MongoDB is connected
-        app.listen(PORT, () => {
-            console.log(Backend server is running at http://localhost:${PORT});
-        });
+MongoClient.connect('mongodb+srv://diluboii:Prince%402025@cluster0.kmsmh.mongodb.net/', { useNewUrlParser: true, useUnifiedTopology: true }, (err, client) => {
+    if (err) {
+        console.error('Failed to connect to MongoDB', err);
+        process.exit(1); // Exit the application if the database connection fails
+    }
+    db = client.db('webstore');
+    console.log('Connected to MongoDB');
+});
+
+//server static file
+    var staticPath = path.resolve(__dirname,"images");
+    app.use('/images',express.static(staticPath));
+
+// File not found error handler for '/images' path
+    app.use('/images', (req, res) => {
+        res.status(404).send('File Not Found');
+      });
+
+// display a message for root path to show that API is working
+app.get('/', (req, res, next) => {
+    res.send('Select a collection, e.g., /collection/messages')
+})
+
+// get the collection name
+app.param('collectionName', (req, res, next, collectionName) => {
+    if (!db) {
+        return res.status(500).send('Database not connected');
+    }
+    req.collection = db.collection(collectionName);
+    return next();
+})
+
+
+// retrieve all the objects from an collection
+app.get('/collection/:collectionName', (req, res, next) => {
+    req.collection.find({}).toArray((e, results) => {
+        if (e) return next(e)
+        res.send(results)
     })
-    .catch(err => {
-        console.error('Failed to connect to MongoDB:', err);
+})
+
+
+
+//Adding a new post to a collection
+app.post('/collection/:collectionName', (req, res, next) => {
+    req.collection.insert(req.body, (e, results) => {
+    if (e) return next(e)
+    res.send(results.ops)
+    })
+    })
+    
+    // return with object id 
+    
+    const ObjectID = require('mongodb').ObjectID;
+    app.get('/collection/:collectionName/:id'
+    , (req, res, next) => {
+        //converts string id to mongodb object id formart
+    req.collection.findOne({ _id: new ObjectID(req.params.id) }, (e, result) => {
+    if (e) return next(e)
+    res.send(result)
+    })
+    })
+    
+    //update availability to specific products
+    app.put('/collection/products/:id', async (req, res) => {
+        const productId = req.params.id;
+        const updatedAvailability = req.body.Availability;
+    
+        try {
+            const result = await db.collection('products').updateOne(
+                { id: productId }, // Match the product by ID
+                { $set: { Availability: updatedAvailability } } // Update availability
+            );
+    
+            if (result.modifiedCount === 0) {//checks count on modified documents
+                return res.status(404).send('Product not found or already up-to-date.');
+            }
+    
+            res.status(200).send({ success: true, message: 'Product updated' });
+        } catch (error) {
+            console.error('Error updating product:', error);
+            res.status(500).send({ success: false, error: 'Database error' });
+        }
     });
-
-// Home Route
-app.get('/', (req, res) => {
-    res.send('Welcome to the webstore API! Try /products or /orders');
-});
-
-// Products API
-app.get('/products', async (req, res) => {
-    try {
-        const products = await db.collection('Products').find({}).toArray();
-        res.json(products); // Send products as JSON
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch products' });
-    }
-});
-
-app.post('/products', async (req, res) => {
-    try {
-        const result = await db.collection('Products').insertOne(req.body);
-        res.status(201).json(result.ops[0]); // Send the created product
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to create product' });
-    }
-});
-
-app.put('/products/:id', async (req, res) => {
-    const productId = req.params.id;
-
-    if (!ObjectId.isValid(productId)) {
-        return res.status(400).json({ error: 'Invalid product ID' });
-    }
-
-    try {
-        const result = await db.collection('Products').updateOne(
-            { _id: new ObjectId(productId) },
-            { $set: req.body }
-        );
-        res.json(result.matchedCount === 1 ? { msg: 'Success' } : { msg: 'Product not found' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update product' });
-    }
-});
-
-app.delete('/products/:id', async (req, res) => {
-    const productId = req.params.id;
-
-    if (!ObjectId.isValid(productId)) {
-        return res.status(400).json({ error: 'Invalid product ID' });
-    }
-
-    try {
-        const result = await db.collection('Products').deleteOne({ _id: new ObjectId(productId) });
-        res.json(result.deletedCount === 1 ? { msg: 'Success' } : { msg: 'Product not found' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete product' });
-    }
-});
-
-// Orders API
-app.get('/orders', async (req, res) => {
-    try {
-        const orders = await db.collection('Orders').find({}).toArray();
-        res.json(orders); // Send orders as JSON
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to fetch orders' });
-    }
-});
-
-app.post('/orders', async (req, res) => {
-    try {
-        const result = await db.collection('Orders').insertOne(req.body);
-        res.status(201).json(result.ops[0]); // Send the created order
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to create order' });
-    }
-});
-
-app.put('/orders/:id', async (req, res) => {
-    const orderId = req.params.id;
-
-    if (!ObjectId.isValid(orderId)) {
-        return res.status(400).json({ error: 'Invalid order ID' });
-    }
-
-    try {
-        const result = await db.collection('Orders').updateOne(
-            { _id: new ObjectId(orderId) },
-            { $set: req.body }
-        );
-        res.json(result.matchedCount === 1 ? { msg: 'Success' } : { msg: 'Order not found' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to update order' });
-    }
-});
-
-app.delete('/orders/:id', async (req, res) => {
-    const orderId = req.params.id;
-
-    if (!ObjectId.isValid(orderId)) {
-        return res.status(400).json({ error: 'Invalid order ID' });
-    }
-
-    try {
-        const result = await db.collection('Orders').deleteOne({ _id: new ObjectId(orderId) });
-        res.json(result.deletedCount === 1 ? { msg: 'Success' } : { msg: 'Order not found' });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to delete order' });
-    }
-});
-
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err);
-    res.status(500).json({ error: 'An error occurred, please try again later.' });
-});
-
-module.exports = app; // Export the app for testing or further use
+    
+    
+    
+    // Delete an object from a collection by ID
+    app.delete('/collection/:collectionName/:id', (req, res, next) => {
+    req.collection.deleteOne(
+    { _id: ObjectID(req.params.id) },(e, result) => {
+    if (e) return next(e)
+    res.send((result.result.n === 1) ?
+    {msg: 'success'} : {msg: 'error'})
+    })
+    })
+    
+    
+// Start the Express.js server
+app.listen(3000, () => {
+    console.log('Express.js server running at localhost:3000')
+})

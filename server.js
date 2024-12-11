@@ -126,7 +126,11 @@ app.post('/collection/:collectionName', (req, res, next) => {
     })
     
     
-// Start the Express.js server
-app.listen(3000, () => {
-    console.log('Express.js server running at localhost:3000')
-})
+// // Start the Express.js server
+// app.listen(3000, () => {
+//     console.log('Express.js server running at localhost:3000')
+// })
+const port = process.env.port || 3000; //dynamic port for render
+app.listen(port,() =>{
+    console.log('Server running on port ${port}'); //log the active port
+});
